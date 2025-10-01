@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treasure Hunt</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
+    color: white;
+    margin: 0; padding: 0;
+  }
+  h1 { margin-top: 20px; font-size: 2em; }
+  #status { font-size: 1.8em; margin: 20px; font-weight: bold; }
+  #distance { font-size: 1.2em; margin-bottom: 20px; }
+  #button {
+    background: #ff9800; border: none; color: white; padding: 15px 25px;
+    font-size: 1.2em; border-radius: 12px; cursor: pointer; margin: 10px;
+    transition: background 0.3s;
+  }
+  #button:hover { background: #e68900; }
+  .hot { color: #ff3b3b; }
+  .warm { color: #ff9800; }
+  .cold { color: #00bcd4; }
+  .found { color: #76ff03; font-size: 2em; }
+  #code-section { display:none; margin-top:20px; }
+  #code-input { padding:10px; font-size:1em; border-radius:8px; }
+  #code-button { padding:10px 20px; font-size:1em; border-radius:8px; margin-left:5px; }
+  #clue-text { margin-top:20px; font-size:1.2em; color:#76ff03; }
+</style>
+</head>
+<body>
+
+<h1>🔥 Treasure Hunt 🔥</h1>
+<p id="distance">Press start to begin tracking...</p>
+<p id="status">❓ Waiting...</p>
+<button id="button">Start Hunt</button>
+
+<div id="code-section">
+  <input type="text" id="code-input" placeholder="Enter secret code">
+  <button id="code-button">Unlock</button>
+  <p id="code-status"></p>
+</div>
+
+<p id="clue-text"></p>
+
+<script>
+// ======= Treasure Hunt Data =======
+const clues = [
+  {lat: 1.3521, lon: 103.8198, code: "CODE1", text: "Clue 1: Look under the bench."},
+  {lat: 1.3550, lon: 103.8200, code: "CODE2", text: "Clue 2: Behind the tree near the fountain."},
+  {lat: 1.3575, lon: 103.8210, code: "CODE3", text: "Clue 3: Check the lamp post."},
+  {lat: 1.3600, lon: 103.8220, code: "CODE4", text: "Clue 4: Hidden in the flower pot."},
+  {lat: 1.3620, lon: 103.8230, code: "CODE5", text: "Clue 5: Look at the red mailbox."},
+  {lat: 1.3640, lon: 103.8240, code: "CODE6", text: "Clue 6: Under the park sign."},
+  {lat: 1.3660, lon: 103.8250, code: "CODE7", text: "Clue 7: Near the small bridge."},
+  {lat: 1.3680, lon: 103.8260, code: "CODE8", text: "Clue 8: Behind the statue."},
+  {lat: 1.3700, lon: 103.8270, code: "CODE9", text: "Clue 9: Inside the wooden box."},
+  {lat: 1.3720, lon: 103.8280, code: "CODE10", text: "Clue 10: Congratulations! Treasure found!"}
+];
+
+let currentClueIndex = 0;
+let watchID = null;
+
+// ======= Haversine Formula =======
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // metres
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// ======= Update Player Position =======
+function updatePosition(pos) {
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+  const target = clues[currentClueIndex];
+  const dist = getDistance(lat, lon, target.lat, target.lon);
+
+  document.getElementById("distance").textContent = `📏 Distance: ${dist.toFixed(1)} meters`;
+  const status = document.getElementById("status");
+
+  if(dist < 20){
+    status.textContent = "🎯 You are at the location!";
+    status.className = "found";
+    navigator.vibrate([200,100,200]); // optional
+
+    // Show code input
+    document.getElementById("code-section").style.display = "block";
+  } else if(dist < 100){
+    status.textContent = "🔥 HOT!";
+    status.className = "hot";
+    document.getElementById("code-section").style.display = "none";
+  } else if(dist < 500){
+    status.textContent = "🌡️ WARM";
+    status.className = "warm";
+    document.getElementById("code-section").style.display = "none";
+  } else {
+    status.textContent = "❄️ COLD";
+    status.className = "cold";
+    document.getElementById("code-section").style.display = "none";
+  }
+}
+
+// ======= Handle Code Input =======
+document.getElementById("code-button").addEventListener("click", ()=>{
+  const input = document.getElementById("code-input").value.trim();
+  const status = document.getElementById("code-status");
+  const clueText = document.getElementById("clue-text");
+  const target = clues[currentClueIndex];
+
+  if(input === target.code){
+    status.textContent = "🎉 Correct code!";
+    status.style.color = "#76ff03";
+    clueText.textContent = target.text;
+
+    currentClueIndex++;
+    document.getElementById("code-input").value = "";
+    document.getElementById("code-section").style.display = "none";
+
+    if(currentClueIndex >= clues.length){
+      alert("🏆 Congratulations! You completed the treasure hunt!");
+      stopTracking();
+    }
+  } else {
+    status.textContent = "❌ Incorrect code. Try again!";
+    status.style.color = "#ff3b3b";
+  }
+});
+
+// ======= Start Tracking =======
+function startTracking(){
+  if(navigator.geolocation){
+    watchID = navigator.geolocation.watchPosition(updatePosition, (err)=>{
+      document.getElementById("status").textContent = "⚠️ Error getting location!";
+    }, {enableHighAccuracy:true, maximumAge:0, timeout:5000});
+    document.getElementById("button").textContent = "Tracking...";
+    document.getElementById("button").disabled = true;
+  } else alert("Geolocation not supported on this device.");
+}
+
+function stopTracking(){
+  if(watchID !== null) navigator.geolocation.clearWatch(watchID);
+}
+
+document.getElementById("button").addEventListener("click", startTracking);
+</script>
+
+</body>
+</html>
