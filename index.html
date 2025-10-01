@@ -49,6 +49,7 @@
   </div>
 
   <script defer>
+    // 10 clues
     const clues = [
       "Clue 1: Go to the playground entrance.",
       "Clue 2: Find the big tree with red flowers.",
@@ -61,8 +62,12 @@
       "Clue 9: Look near the park exit gate.",
       "Clue 10: You found the treasure! 🎉"
     ];
-    
-    const codes = ["111", "222", "333", "444", "555", "666", "777", "888", "999", "000"];
+
+    // Matching unlock codes for each clue
+    const codes = [
+      "111", "222", "333", "444", "555",
+      "666", "777", "888", "999", "000"
+    ];
     
     let currentClue = 0;
 
@@ -72,13 +77,14 @@
     const codeInput = document.getElementById("codeInput");
     const unlockBtn = document.getElementById("unlockBtn");
 
+    // Start the hunt
     startBtn.addEventListener("click", () => {
-      alert("Start button clicked! ✅"); // Debug for mobile
       startBtn.style.display = "none";
       clueContainer.style.display = "block";
       clueText.textContent = clues[currentClue];
     });
 
+    // Unlock next clue
     unlockBtn.addEventListener("click", () => {
       if (codeInput.value === codes[currentClue]) {
         currentClue++;
@@ -91,7 +97,7 @@
           unlockBtn.style.display = "none";
         }
       } else {
-        alert("Wrong code! Try again.");
+        alert("❌ Wrong code! Try again.");
       }
     });
   </script>
