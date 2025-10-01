@@ -36,6 +36,11 @@
       background: gray;
       cursor: not-allowed;
     }
+    #feedback {
+      margin-top: 15px;
+      font-size: 20px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -46,27 +51,22 @@
     <p id="clue"></p>
     <input type="text" id="codeInput" placeholder="Enter unlock code">
     <button id="unlockBtn">Unlock Next Clue</button>
+    <p id="feedback"></p>
   </div>
 
   <script defer>
-    // 10 clues
+    // 10 clues with lat/lon and codes
     const clues = [
-      "Clue 1: Go to the playground entrance.",
-      "Clue 2: Find the big tree with red flowers.",
-      "Clue 3: Look near the basketball court.",
-      "Clue 4: Check the park bench near the pond.",
-      "Clue 5: Go to the swings area.",
-      "Clue 6: Look under the slide.",
-      "Clue 7: Head towards the small bridge.",
-      "Clue 8: Find the garden with yellow flowers.",
-      "Clue 9: Look near the park exit gate.",
-      "Clue 10: You found the treasure! 🎉"
-    ];
-
-    // Matching unlock codes for each clue
-    const codes = [
-      "111", "222", "333", "444", "555",
-      "666", "777", "888", "999", "000"
+      { clue: "Clue 1: Playground entrance", lat: 1.3489, lon: 103.9267, code: "111" },
+      { clue: "Clue 2: Big tree with red flowers", lat: 1.3495, lon: 103.9275, code: "222" },
+      { clue: "Clue 3: Basketball court", lat: 1.3502, lon: 103.9282, code: "333" },
+      { clue: "Clue 4: Park bench near pond", lat: 1.3510, lon: 103.9290, code: "444" },
+      { clue: "Clue 5: Swings area", lat: 1.3515, lon: 103.9295, code: "555" },
+      { clue: "Clue 6: Under the slide", lat: 1.3520, lon: 103.9300, code: "666" },
+      { clue: "Clue 7: Small bridge", lat: 1.3525, lon: 103.9305, code: "777" },
+      { clue: "Clue 8: Garden with yellow flowers", lat: 1.3530, lon: 103.9310, code: "888" },
+      { clue: "Clue 9: Park exit gate", lat: 1.3535, lon: 103.9315, code: "999" },
+      { clue: "Clue 10: 🎉 Treasure found!", lat: 1.3540, lon: 103.9320, code: "000" }
     ];
     
     let currentClue = 0;
@@ -76,25 +76,70 @@
     const clueText = document.getElementById("clue");
     const codeInput = document.getElementById("codeInput");
     const unlockBtn = document.getElementById("unlockBtn");
+    const feedback = document.getElementById("feedback");
+
+    // Haversine formula to calculate distance (in meters)
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth radius in meters
+      const φ1 = lat1 * Math.PI/180;
+      const φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180;
+      const Δλ = (lon2-lon1) * Math.PI/180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c;
+    }
+
+    // GPS tracking
+    function trackLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(pos => {
+          const userLat = pos.coords.latitude;
+          const userLon = pos.coords.longitude;
+          const target = clues[currentClue];
+          const distance = getDistance(userLat, userLon, target.lat, target.lon);
+
+          if (distance < 20) {
+            feedback.textContent = "🔥🔥🔥 Hot!";
+            navigator.vibrate(500);
+          } else if (distance < 50) {
+            feedback.textContent = "🔥 Warm";
+            navigator.vibrate(200);
+          } else {
+            feedback.textContent = "❄️ Cold";
+          }
+        }, err => {
+          feedback.textContent = "Error: Enable location services!";
+        }, { enableHighAccuracy: true });
+      } else {
+        feedback.textContent = "Geolocation not supported.";
+      }
+    }
 
     // Start the hunt
     startBtn.addEventListener("click", () => {
       startBtn.style.display = "none";
       clueContainer.style.display = "block";
-      clueText.textContent = clues[currentClue];
+      clueText.textContent = clues[currentClue].clue;
+      trackLocation();
     });
 
     // Unlock next clue
     unlockBtn.addEventListener("click", () => {
-      if (codeInput.value === codes[currentClue]) {
+      if (codeInput.value === clues[currentClue].code) {
         currentClue++;
         if (currentClue < clues.length) {
-          clueText.textContent = clues[currentClue];
+          clueText.textContent = clues[currentClue].clue;
           codeInput.value = "";
         } else {
           clueText.textContent = "🎉 Congratulations! You completed the hunt!";
           codeInput.style.display = "none";
           unlockBtn.style.display = "none";
+          feedback.textContent = "";
         }
       } else {
         alert("❌ Wrong code! Try again.");
