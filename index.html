@@ -8,9 +8,9 @@
   body {
     font-family: Arial, sans-serif;
     text-align: center;
-    background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
-    color: white;
     margin: 0; padding: 0;
+    transition: background 0.5s;
+    color: white;
   }
   h1 { margin-top: 20px; font-size: 2em; }
   #status { font-size: 1.8em; margin: 20px; font-weight: bold; }
@@ -21,19 +21,23 @@
     transition: background 0.3s;
   }
   #button:hover { background: #e68900; }
-  .hot { color: #ff3b3b; }
-  .warm { color: #ff9800; }
-  .cold { color: #00bcd4; }
-  .found { color: #76ff03; font-size: 2em; }
   #code-section { display:none; margin-top:20px; }
   #code-input { padding:10px; font-size:1em; border-radius:8px; }
   #code-button { padding:10px 20px; font-size:1em; border-radius:8px; margin-left:5px; }
+  #code-status { margin-top: 10px; font-weight: bold; }
   #clue-text { margin-top:20px; font-size:1.2em; color:#76ff03; }
+  #progress-bar-container {
+    width: 80%; background: #ccc; height: 20px; border-radius: 10px; margin: 20px auto;
+  }
+  #progress-bar {
+    width: 0%; height: 100%; background: #76ff03; border-radius: 10px; transition: width 0.5s;
+  }
 </style>
 </head>
 <body>
 
 <h1>🔥 Treasure Hunt 🔥</h1>
+<div id="progress-bar-container"><div id="progress-bar"></div></div>
 <p id="distance">Press start to begin tracking...</p>
 <p id="status">❓ Waiting...</p>
 <button id="button">Start Hunt</button>
@@ -88,25 +92,30 @@ function updatePosition(pos) {
 
   document.getElementById("distance").textContent = `📏 Distance: ${dist.toFixed(1)} meters`;
   const status = document.getElementById("status");
+  const body = document.body;
 
+  // Background color based on distance
   if(dist < 20){
     status.textContent = "🎯 You are at the location!";
     status.className = "found";
-    navigator.vibrate([200,100,200]); // optional
-
-    // Show code input
+    body.style.background = "linear-gradient(to bottom right, #76ff03, #aaff33)";
+    navigator.vibrate([300,100,300]);
     document.getElementById("code-section").style.display = "block";
   } else if(dist < 100){
     status.textContent = "🔥 HOT!";
     status.className = "hot";
+    body.style.background = "linear-gradient(to bottom right, #ff3b3b, #ff6f61)";
+    if(navigator.vibrate) navigator.vibrate(100);
     document.getElementById("code-section").style.display = "none";
   } else if(dist < 500){
     status.textContent = "🌡️ WARM";
     status.className = "warm";
+    body.style.background = "linear-gradient(to bottom right, #ff9800, #ffc107)";
     document.getElementById("code-section").style.display = "none";
   } else {
     status.textContent = "❄️ COLD";
     status.className = "cold";
+    body.style.background = "linear-gradient(to bottom right, #00bcd4, #0097a7)";
     document.getElementById("code-section").style.display = "none";
   }
 }
@@ -126,6 +135,10 @@ document.getElementById("code-button").addEventListener("click", ()=>{
     currentClueIndex++;
     document.getElementById("code-input").value = "";
     document.getElementById("code-section").style.display = "none";
+
+    // Update progress bar
+    const progressPercent = (currentClueIndex / clues.length) * 100;
+    document.getElementById("progress-bar").style.width = progressPercent + "%";
 
     if(currentClueIndex >= clues.length){
       alert("🏆 Congratulations! You completed the treasure hunt!");
