@@ -101,13 +101,13 @@ function updatePosition(pos) {
     body.style.background = "linear-gradient(to bottom right, #76ff03, #aaff33)";
     navigator.vibrate([300,100,300]);
     document.getElementById("code-section").style.display = "block";
-  } else if(dist < 100){
+  } else if(dist < 10){
     status.textContent = "🔥 HOT!";
     status.className = "hot";
     body.style.background = "linear-gradient(to bottom right, #ff3b3b, #ff6f61)";
     if(navigator.vibrate) navigator.vibrate(100);
     document.getElementById("code-section").style.display = "none";
-  } else if(dist < 500){
+  } else if(dist < 30){
     status.textContent = "🌡️ WARM";
     status.className = "warm";
     body.style.background = "linear-gradient(to bottom right, #ff9800, #ffc107)";
