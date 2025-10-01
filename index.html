@@ -1,150 +1,434 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Treasure Hunt</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 20px;
-    }
-    #clueContainer {
-      display: none;
-      margin-top: 20px;
-      padding: 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-    input, button {
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background: gray;
-      cursor: not-allowed;
-    }
-    #feedback {
-      margin-top: 15px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Treasure Hunt — Hot & Cold</title>
+<style>
+  :root{
+    --bg-cold: linear-gradient(135deg,#053e4b 0%,#0b7285 100%);
+    --bg-warm: linear-gradient(135deg,#ff9a3c 0%,#ff6b6b 100%);
+    --bg-hot: linear-gradient(135deg,#ff3b3b 0%,#ff0066 100%);
+    --bg-found: linear-gradient(135deg,#76ff03 0%,#ffea00 100%);
+    --card: rgba(255,255,255,0.06);
+    --glass: rgba(255,255,255,0.06);
+    --accent: rgba(255,255,255,0.9);
+    --muted: rgba(255,255,255,0.65);
+    --shadow: 0 8px 30px rgba(0,0,0,0.4);
+    --radius: 16px;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    color:var(--accent);
+  }
+
+  body {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    transition: background 800ms cubic-bezier(.2,.9,.2,1);
+    background: var(--bg-cold);
+    min-height:100vh;
+  }
+
+  .wrap {
+    width:100%;
+    max-width:460px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+    border-radius:22px;
+    padding:20px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(6px) saturate(120%);
+    -webkit-backdrop-filter: blur(6px);
+    overflow:hidden;
+  }
+
+  header {
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+
+  .logo {
+    width:56px;height:56px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.08); font-weight:700; font-size:20px;
+    color: white;
+  }
+
+  h1 {
+    margin:0;font-size:1.2rem;line-height:1.1;
+  }
+  p.lead { margin:2px 0 0 0; color:var(--muted); font-size:0.9rem; }
+
+  .main {
+    margin-top:18px;
+    display:grid;
+    gap:14px;
+  }
+
+  .hero {
+    padding:16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+
+  .status-badge {
+    min-width:72px;
+    height:72px;
+    border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;
+    font-size:0.95rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  }
+
+  .status-text {
+    flex:1;
+    text-align:left;
+  }
+  .status-text .title { font-size:1.05rem; margin:0; }
+  .status-text .sub { color:var(--muted); font-size:0.88rem; margin-top:6px; }
+
+  .controls {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:center;
+  }
+
+  button.primary {
+    background: rgba(255,255,255,0.12);
+    color:var(--accent);
+    border:none;padding:12px 16px;border-radius:12px;
+    font-size:1rem;font-weight:600; cursor:pointer;
+    transition: transform .15s ease, background .2s;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  }
+  button.primary:active{ transform:translateY(2px) scale(.997); }
+
+  button.ghost {
+    background: transparent;border:1px solid rgba(255,255,255,0.08);
+    color:var(--accent);padding:10px 14px;border-radius:10px;font-weight:600;
+  }
+
+  .gamecard {
+    margin-top:6px;
+    padding:14px;border-radius:14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  .instruction {
+    color:var(--muted); font-size:0.95rem; margin:0 0 10px 0;
+  }
+
+  .inputRow { display:flex; gap:8px; align-items:center; }
+  input.code {
+    flex:1;padding:12px;border-radius:10px;border:none;font-size:16px;
+    background: rgba(0,0,0,0.18); color:white; outline:none;
+  }
+
+  .progress {
+    margin-top:14px;
+  }
+  .progress .bar {
+    width:100%; height:12px; background: rgba(255,255,255,0.06);
+    border-radius:999px; overflow:hidden;
+  }
+  .progress .fill {
+    width:0%; height:100%; background: linear-gradient(90deg,#fff176,#ff5252);
+    transition: width 600ms cubic-bezier(.2,.9,.2,1);
+  }
+  .progress .meta { text-align:right; color:var(--muted); font-size:12px; margin-top:6px; }
+
+  .thermo {
+    height:8px;border-radius:999px; background:rgba(255,255,255,0.03); overflow:hidden; margin-top:8px;
+  }
+  .thermo .tfill{ height:100%; width:0%; background: linear-gradient(90deg,#00e5ff,#ffea00,#ff3b3b); transition: width 300ms linear; }
+
+  .footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px; }
+
+  /* status colors for badge (small) */
+  .coldBadge{ background: rgba(0,184,212,0.12); color:#00e5ff; }
+  .warmBadge{ background: rgba(255,152,0,0.12); color:#ffd166; }
+  .hotBadge{ background: rgba(255,59,59,0.12); color:#ff6b6b; }
+  .foundBadge{ background: rgba(118,255,3,0.12); color:#e6ff8a; }
+
+  /* small icon styling */
+  .icon {
+    width:34px; height:34px; display:inline-flex; align-items:center;justify-content:center;
+    border-radius:8px; background: rgba(255,255,255,0.02);
+  }
+
+  /* small screen adjustments */
+  @media (max-width:420px){
+    .logo{width:48px;height:48px}
+    .status-badge{min-width:64px;height:64px}
+  }
+</style>
 </head>
 <body>
-  <h1>Treasure Hunt</h1>
-  <button id="startBtn">Start Hunt</button>
-  
-  <div id="clueContainer">
-    <p id="clue"></p>
-    <input type="text" id="codeInput" placeholder="Enter unlock code">
-    <button id="unlockBtn">Unlock Next Clue</button>
-    <p id="feedback"></p>
+  <div class="wrap" id="wrap">
+    <header>
+      <div class="logo">SH</div>
+      <div>
+        <h1>Saturday Hunt</h1>
+        <p class="lead">Hot & Cold treasure hunt — use the paper codes to unlock the next step.</p>
+      </div>
+    </header>
+
+    <div class="main">
+      <div class="hero">
+        <div id="badge" class="status-badge coldBadge">
+          <div id="badgeIcon" class="icon">❄️</div>
+        </div>
+
+        <div class="status-text">
+          <p class="title" id="statusTitle">Cold</p>
+          <p class="sub" id="statusSub">Find the first paper clue and enter its code to begin.</p>
+        </div>
+      </div>
+
+      <div class="gamecard" id="gamecard">
+        <p class="instruction" id="instruction">When you press <strong>Start</strong>, your phone will listen to your location and show Hot / Warm / Cold. Do not share the device with other players.</p>
+
+        <div class="controls">
+          <button id="startBtn" class="primary">Start Hunt</button>
+          <button id="resetBtn" class="ghost" title="Reset progress">Reset</button>
+        </div>
+
+        <div id="playArea" style="display:none; margin-top:12px;">
+          <p style="margin:0; color:var(--muted)" id="guide">Enter the code from the paper clue to unlock the next paper location.</p>
+
+          <div style="margin-top:12px" class="inputRow">
+            <input id="codeInput" class="code" placeholder="Enter paper code (e.g. 111)" autocomplete="off" inputmode="numeric" />
+            <button id="unlockBtn" class="primary">Unlock</button>
+          </div>
+
+          <div class="progress" aria-hidden="true">
+            <div class="bar"><div id="fill" class="fill"></div></div>
+            <div class="meta" id="progressMeta">Clue 0 of 10</div>
+          </div>
+
+          <div class="thermo" aria-hidden="true"><div id="thermoFill" class="tfill"></div></div>
+
+          <p id="unlockedMsg" style="margin-top:12px; color: #b8ffb0; font-weight:600;"></p>
+        </div>
+
+      </div>
+
+      <div class="footer">
+        <small>Designed for phones • Keep GPS/location enabled • Tap Reset to start over</small>
+      </div>
+    </div>
   </div>
 
-  <script defer>
-    // 10 clues with lat/lon and codes
-    const clues = [
-      { clue: "Clue 1: Playground entrance", lat: 1.3489, lon: 103.9267, code: "111" },
-      { clue: "Clue 2: Big tree with red flowers", lat: 1.3495, lon: 103.9275, code: "222" },
-      { clue: "Clue 3: Basketball court", lat: 1.3502, lon: 103.9282, code: "333" },
-      { clue: "Clue 4: Park bench near pond", lat: 1.3510, lon: 103.9290, code: "444" },
-      { clue: "Clue 5: Swings area", lat: 1.3515, lon: 103.9295, code: "555" },
-      { clue: "Clue 6: Under the slide", lat: 1.3520, lon: 103.9300, code: "666" },
-      { clue: "Clue 7: Small bridge", lat: 1.3525, lon: 103.9305, code: "777" },
-      { clue: "Clue 8: Garden with yellow flowers", lat: 1.3530, lon: 103.9310, code: "888" },
-      { clue: "Clue 9: Park exit gate", lat: 1.3535, lon: 103.9315, code: "999" },
-      { clue: "Clue 10: 🎉 Treasure found!", lat: 1.3540, lon: 103.9320, code: "000" }
-    ];
-    
-    let currentClue = 0;
+<script>
+/* ----- CONFIG ----- */
+/* 10 clues: lat, lon, code (paper), textHidden (not shown automatically) */
+const clues = [
+  { lat: 1.3489, lon: 103.9267, code: "111", text: "Paper clue #1: At the playground entrance." },
+  { lat: 1.3495, lon: 103.9275, code: "222", text: "Paper clue #2: By the big red tree." },
+  { lat: 1.3502, lon: 103.9282, code: "333", text: "Paper clue #3: Next to the basketball court." },
+  { lat: 1.3510, lon: 103.9290, code: "444", text: "Paper clue #4: Under the wooden bench." },
+  { lat: 1.3515, lon: 103.9295, code: "555", text: "Paper clue #5: Look near the swings." },
+  { lat: 1.3520, lon: 103.9300, code: "666", text: "Paper clue #6: Under the slide." },
+  { lat: 1.3525, lon: 103.9305, code: "777", text: "Paper clue #7: On the small bridge." },
+  { lat: 1.3530, lon: 103.9310, code: "888", text: "Paper clue #8: Behind the statue." },
+  { lat: 1.3535, lon: 103.9315, code: "999", text: "Paper clue #9: By the exit gate." },
+  { lat: 1.3540, lon: 103.9320, code: "000", text: "Final: Treasure found! Celebrate 🎉" }
+];
 
-    const startBtn = document.getElementById("startBtn");
-    const clueContainer = document.getElementById("clueContainer");
-    const clueText = document.getElementById("clue");
-    const codeInput = document.getElementById("codeInput");
-    const unlockBtn = document.getElementById("unlockBtn");
-    const feedback = document.getElementById("feedback");
+const maxDetectDistance = 500; // meters for thermometer smoothing
+let currentIndex = 0;
+let watchId = null;
 
-    // Haversine formula to calculate distance (in meters)
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // Earth radius in meters
-      const φ1 = lat1 * Math.PI/180;
-      const φ2 = lat2 * Math.PI/180;
-      const Δφ = (lat2-lat1) * Math.PI/180;
-      const Δλ = (lon2-lon1) * Math.PI/180;
+/* ----- DOM ----- */
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const playArea = document.getElementById('playArea');
+const codeInput = document.getElementById('codeInput');
+const unlockBtn = document.getElementById('unlockBtn');
+const statusTitle = document.getElementById('statusTitle');
+const statusSub = document.getElementById('statusSub');
+const badge = document.getElementById('badge');
+const badgeIcon = document.getElementById('badgeIcon');
+const fillEl = document.getElementById('fill');
+const progressMeta = document.getElementById('progressMeta');
+const thermoFill = document.getElementById('thermoFill');
+const unlockedMsg = document.getElementById('unlockedMsg');
+const wrap = document.getElementById('wrap');
 
-      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ/2) * Math.sin(Δλ/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+/* ----- UTILS ----- */
+function setTheme(state){
+  // state: 'cold'|'warm'|'hot'|'found'
+  if(state === 'cold'){
+    document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-cold');
+    badge.className = 'status-badge coldBadge';
+    badgeIcon.textContent = '❄️';
+    statusTitle.textContent = 'Cold';
+    statusSub.textContent = 'Move around to get closer.';
+  } else if(state === 'warm'){
+    document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-warm');
+    badge.className = 'status-badge warmBadge';
+    badgeIcon.textContent = '🌤️';
+    statusTitle.textContent = 'Warm';
+    statusSub.textContent = 'You are getting closer!';
+  } else if(state === 'hot'){
+    document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-hot');
+    badge.className = 'status-badge hotBadge';
+    badgeIcon.textContent = '🔥';
+    statusTitle.textContent = 'Hot';
+    statusSub.textContent = 'Very near — search the spot carefully.';
+  } else if(state === 'found'){
+    document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-found');
+    badge.className = 'status-badge foundBadge';
+    badgeIcon.textContent = '🏆';
+    statusTitle.textContent = 'At location';
+    statusSub.textContent = 'Enter the code from the paper to unlock the next clue.';
+  }
+}
 
-      return R * c;
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+/* haversine distance in meters */
+function getDistance(lat1, lon1, lat2, lon2){
+  const R = 6371e3;
+  const toRad = (d)=>d*Math.PI/180;
+  const φ1 = toRad(lat1), φ2 = toRad(lat2);
+  const Δφ = toRad(lat2-lat1), Δλ = toRad(lon2-lon1);
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/* update UI progress */
+function updateProgress(){
+  const pct = Math.round((currentIndex / clues.length) * 100);
+  fillEl.style.width = pct + '%';
+  progressMeta.textContent = `Clue ${Math.min(currentIndex+1, clues.length)} of ${clues.length}`;
+}
+
+/* start/stop GPS */
+function startTracking() {
+  if (!navigator.geolocation) {
+    statusSub.textContent = 'Geolocation not supported on this device.';
+    return;
+  }
+  if (watchId !== null) return;
+  watchId = navigator.geolocation.watchPosition(handlePos, (err)=>{
+    statusSub.textContent = 'Enable location services and allow permission.';
+  }, {enableHighAccuracy:true, maximumAge:1000, timeout:8000});
+}
+
+function stopTracking(){
+  if(watchId !== null){
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+}
+
+/* handle position: compute distance -> change theme and thermometer */
+function handlePos(pos){
+  const userLat = pos.coords.latitude;
+  const userLon = pos.coords.longitude;
+  const target = clues[currentIndex];
+  const distance = getDistance(userLat, userLon, target.lat, target.lon);
+
+  // determine state
+  if(distance < 20){
+    setTheme('found');
+    try{ navigator.vibrate([250,80,250]); }catch(e){}
+  } else if(distance < 60){
+    setTheme('hot');
+    try{ navigator.vibrate(120); }catch(e){}
+  } else if(distance < 200){
+    setTheme('warm');
+  } else {
+    setTheme('cold');
+  }
+
+  // thermometer: smooth fill from 0..maxDetectDistance
+  const pct = clamp(1 - (distance / maxDetectDistance), 0, 1);
+  thermoFill.style.width = (pct*100) + '%';
+}
+
+/* ----- Game logic ----- */
+startBtn.addEventListener('click', ()=>{
+  startBtn.disabled = true;
+  startBtn.textContent = 'Tracking…';
+  playArea.style.display = 'block';
+  unlockedMsg.textContent = '';
+  codeInput.value = '';
+  updateProgress();
+  startTracking();
+});
+
+resetBtn.addEventListener('click', ()=>{
+  if (!confirm('Reset your progress and start over?')) return;
+  currentIndex = 0;
+  stopTracking();
+  playArea.style.display = 'none';
+  startBtn.disabled = false;
+  startBtn.textContent = 'Start Hunt';
+  unlockedMsg.textContent = '';
+  fillEl.style.width = '0%';
+  thermoFill.style.width = '0%';
+  setTheme('cold');
+  progressMeta.textContent = `Clue 0 of ${clues.length}`;
+});
+
+unlockBtn.addEventListener('click', ()=>{
+  const val = (codeInput.value || '').trim();
+  if(val === ''){
+    alert('Enter the code from the paper clue.');
+    return;
+  }
+  const target = clues[currentIndex];
+  if(val === target.code){
+    // correct
+    unlockedMsg.textContent = '✅ Code accepted — next paper clue revealed (in real life).';
+    unlockedMsg.style.color = '#eaffc9';
+    // reveal the paper clue text briefly (optional) — we'll show a short message only
+    setTimeout(()=>{ unlockedMsg.textContent = ''; }, 4000);
+
+    currentIndex++;
+    updateProgress();
+    codeInput.value = '';
+
+    // last clue reached?
+    if(currentIndex >= clues.length){
+      // finished
+      stopTracking();
+      playArea.style.display = 'none';
+      startBtn.textContent = 'Completed';
+      startBtn.disabled = true;
+      setTheme('found');
+      alert('🏆 You completed the treasure hunt — well done!');
+      return;
+    } else {
+      // Prompt the player to search for the next paper in real life
+      statusSub.textContent = `Now find paper clue #${currentIndex+1} and enter its code here when you reach it.`;
     }
+  } else {
+    // wrong
+    alert('❌ Incorrect code — try again.');
+  }
+});
 
-    // GPS tracking
-    function trackLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(pos => {
-          const userLat = pos.coords.latitude;
-          const userLon = pos.coords.longitude;
-          const target = clues[currentClue];
-          const distance = getDistance(userLat, userLon, target.lat, target.lon);
-
-          if (distance < 20) {
-            feedback.textContent = "🔥🔥🔥 Hot!";
-            navigator.vibrate(500);
-          } else if (distance < 50) {
-            feedback.textContent = "🔥 Warm";
-            navigator.vibrate(200);
-          } else {
-            feedback.textContent = "❄️ Cold";
-          }
-        }, err => {
-          feedback.textContent = "Error: Enable location services!";
-        }, { enableHighAccuracy: true });
-      } else {
-        feedback.textContent = "Geolocation not supported.";
-      }
-    }
-
-    // Start the hunt
-    startBtn.addEventListener("click", () => {
-      startBtn.style.display = "none";
-      clueContainer.style.display = "block";
-      clueText.textContent = clues[currentClue].clue;
-      trackLocation();
-    });
-
-    // Unlock next clue
-    unlockBtn.addEventListener("click", () => {
-      if (codeInput.value === clues[currentClue].code) {
-        currentClue++;
-        if (currentClue < clues.length) {
-          clueText.textContent = clues[currentClue].clue;
-          codeInput.value = "";
-        } else {
-          clueText.textContent = "🎉 Congratulations! You completed the hunt!";
-          codeInput.style.display = "none";
-          unlockBtn.style.display = "none";
-          feedback.textContent = "";
-        }
-      } else {
-        alert("❌ Wrong code! Try again.");
-      }
-    });
-  </script>
+/* initialize */
+setTheme('cold');
+progressMeta.textContent = `Clue 0 of ${clues.length}`;
+updateProgress();
+</script>
 </body>
 </html>
