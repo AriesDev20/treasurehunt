@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stylish Compass → Point to Lat/Lon</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f1724; /* deep blue */
+      --card:#0b1220ff;
+      --glass: rgba(255,255,255,0.03);
+      --accent: linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);
+      --glass-border: rgba(255,255,255,0.06);
+      --muted: rgba(255,255,255,0.6);
+      --white: #ffffff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background: radial-gradient(1200px 600px at 10% 10%, rgba(12,34,60,0.6), transparent), radial-gradient(800px 500px at 90% 90%, rgba(12,40,30,0.25), transparent), var(--bg); color:var(--white);
+      display:flex; align-items:center; justify-content:center; padding:28px;
+    }
+
+    .wrap{width:100%; max-width:980px;}
+    .topbar{display:flex;align-items:center;gap:16px; margin-bottom:18px}
+    .title{font-weight:800; font-size:20px; letter-spacing:-0.02em}
+    .subtitle{color:var(--muted); font-size:13px}
+
+    .card{background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid var(--glass-border); padding:20px; border-radius:14px; box-shadow: 0 8px 30px rgba(2,6,23,0.6)}
+
+    .grid{display:grid; grid-template-columns: 420px 1fr; gap:20px; align-items:start}
+
+    /* inputs */
+    .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    input[type=number]{appearance:none; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); color:var(--white); min-width:160px}
+    button{padding:10px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:600}
+    .btn-primary{background:var(--accent); color:white; box-shadow: 0 6px 20px rgba(124,58,237,0.18);}
+    .btn-ghost{background:transparent; border:1px solid rgba(255,255,255,0.05); color:var(--white)}
+    label{font-size:13px; color:var(--muted)}
+
+    /* Compass area */
+    .compass-wrap{display:flex; gap:22px; align-items:center}
+    .compass-card{width:420px; height:420px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid var(--glass-border);}
+
+    /* SVG compass styling */
+    .compass-svg{width:360px;height:360px}
+    .needle{transform-origin:50% 50%; transition: transform 300ms cubic-bezier(.2,.9,.2,1)}
+    .card-stats{display:flex; flex-direction:column; gap:8px}
+    .stat{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:12px 14px; border-radius:12px; border:1px solid var(--glass-border); min-width:160px}
+    .stat strong{display:block; font-size:18px}
+    .muted{color:var(--muted); font-size:13px}
+
+    .footer-note{margin-top:12px; color:var(--muted); font-size:13px}
+
+    @media (max-width:900px){
+      .grid{grid-template-columns: 1fr;}
+      .compass-card{width:100%; height:auto; padding:28px 0}
+      .compass-svg{width:320px;height:320px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <div class="title">Stylish Compass</div>
+        <div class="subtitle">Enter a target latitude & longitude — the needle will point toward it.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+
+        <!-- Compass visual -->
+        <div class="compass-card">
+          <svg class="compass-svg" viewBox="0 0 360 360" aria-hidden="false" role="img">
+            <!-- Outer ring -->
+            <defs>
+              <radialGradient id="rimGrad" cx="50%" cy="30%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.02" />
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.25" />
+              </radialGradient>
+            </defs>
+            <circle cx="180" cy="180" r="170" fill="url(#rimGrad)" stroke="rgba(255,255,255,0.03)" stroke-width="2" />
+
+            <!-- tick marks and numbers generated in JS as <g id="ticks"> -->
+            <g id="ticks"></g>
+
+            <!-- Cardinal labels -->
+            <g font-family="Inter, sans-serif" font-weight="700" font-size="20" fill="#ffffff">
+              <text x="180" y="36" text-anchor="middle">N</text>
+              <text x="322" y="190" text-anchor="middle">E</text>
+              <text x="180" y="342" text-anchor="middle">S</text>
+              <text x="38" y="190" text-anchor="middle">W</text>
+            </g>
+
+            <!-- center circle & subtle glow -->
+            <circle cx="180" cy="180" r="42" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.04)" />
+            <circle cx="180" cy="180" r="6" fill="#fff" />
+
+            <!-- Needle group -->
+            <g id="needleGroup" class="needle" transform="rotate(0 180 180)">
+              <!-- needle shadow -->
+              <path d="M180 46 L194 180 L180 170 L166 180 Z" fill="#222" opacity="0.14" transform="translate(4,4) rotate(0 180 180)"/>
+              <!-- north pointer (red) -->
+              <path d="M180 54 L194 180 L180 170 L180 54 Z" fill="#ff4d4f" />
+              <!-- south pointer (cool) -->
+              <path d="M180 306 L166 180 L180 190 L180 306 Z" fill="#0ea5a4" />
+            </g>
+
+            <!-- degree arc (for visual effect) -->
+            <g id="degreeArc"></g>
+
+          </svg>
+        </div>
+
+        <!-- Controls and stats -->
+        <div>
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <label>Target latitude & longitude</label>
+              <div class="controls" style="margin-top:8px">
+                <input id="targetLat" type="number" step="any" placeholder="Latitude (e.g. 1.3521)" />
+                <input id="targetLon" type="number" step="any" placeholder="Longitude (e.g. 103.8198)" />
+                <button id="setTarget" class="btn-primary">Point</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center">
+            <label style="flex:1"><input id="follow" type="checkbox"/> Follow my location</label>
+            <button id="enableHeading" class="btn-ghost">Enable device heading</button>
+            <button id="startTrack" class="btn-ghost">Start tracking</button>
+          </div>
+
+          <div class="card-stats">
+            <div class="stat">
+              <div class="muted">Bearing to target</div>
+              <strong id="bearingVal">—°</strong>
+              <div class="muted">0° = North, clockwise</div>
+            </div>
+
+            <div class="stat">
+              <div class="muted">Device heading</div>
+              <strong id="headingVal">—°</strong>
+              <div class="muted">If unavailable, needle shows bearing relative to north.</div>
+            </div>
+
+            <div class="stat">
+              <div class="muted">Distance</div>
+              <strong id="distanceVal">—</strong>
+              <div class="muted">Haversine distance (approx.)</div>
+            </div>
+          </div>
+
+          <div class="footer-note">Tip: On mobile browsers you may need to grant "Motion & Orientation" permission to enable a true compass. Use the <em>Enable device heading</em> button for iOS 13+.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+// Utility functions
+const toRad = d => d * Math.PI / 180;
+const toDeg = r => r * 180 / Math.PI;
+
+function computeBearing(lat1, lon1, lat2, lon2){
+  const φ1 = toRad(lat1), φ2 = toRad(lat2);
+  const Δλ = toRad(lon2 - lon1);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  let θ = Math.atan2(y,x);
+  θ = (toDeg(θ) + 360) % 360;
+  return θ;
+}
+
+function haversineDistance(lat1, lon1, lat2, lon2){
+  const R = 6371e3; // meters
+  const φ1 = toRad(lat1), φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// DOM
+const ticksGroup = document.getElementById('ticks');
+const needleGroup = document.getElementById('needleGroup');
+const bearingEl = document.getElementById('bearingVal');
+const headingEl = document.getElementById('headingVal');
+const distanceEl = document.getElementById('distanceVal');
+const setTargetBtn = document.getElementById('setTarget');
+const targetLatInput = document.getElementById('targetLat');
+const targetLonInput = document.getElementById('targetLon');
+const followCheckbox = document.getElementById('follow');
+const enableHeadingBtn = document.getElementById('enableHeading');
+const startTrackBtn = document.getElementById('startTrack');
+
+let currentPos = null;
+let targetPos = null;
+let watchId = null;
+let latestHeading = null;
+let haveHeading = false;
+
+// draw tick marks (every 10 degrees with bolder cardinals)
+(function drawTicks(){
+  const cx = 180, cy = 180, r = 152;
+  for(let deg=0; deg<360; deg+=5){
+    const long = deg % 30 ===0; // long tick every 30
+    const length = long? 12 : (deg % 10===0?8:4);
+    const stroke = long? 2 : 1;
+    const rad = toRad(deg);
+    const x1 = cx + (r-length)*Math.cos(rad - Math.PI/2);
+    const y1 = cy + (r-length)*Math.sin(rad - Math.PI/2);
+    const x2 = cx + r*Math.cos(rad - Math.PI/2);
+    const y2 = cy + r*Math.sin(rad - Math.PI/2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1); line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke','rgba(255,255,255,0.07)'); line.setAttribute('stroke-width',stroke);
+    ticksGroup.appendChild(line);
+    // numbers every 30 degrees
+    if(deg%30===0){
+      const tx = cx + (r-26)*Math.cos(rad - Math.PI/2);
+      const ty = cy + (r-26)*Math.sin(rad - Math.PI/2) + 6;
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',tx); t.setAttribute('y',ty); t.setAttribute('text-anchor','middle');
+      t.setAttribute('fill','rgba(255,255,255,0.65)'); t.setAttribute('font-size','12'); t.setAttribute('font-family','Inter, sans-serif');
+      t.textContent = String(deg);
+      ticksGroup.appendChild(t);
+    }
+  }
+})();
+
+function rotateNeedleTo(angleDeg){
+  // angleDeg = degrees clockwise from north where the needle should point
+  // our svg is centered at 180,180 so rotate around that
+  needleGroup.setAttribute('transform', `rotate(${angleDeg} 180 180)`);
+}
+
+function updateUI(){
+  if(!currentPos || !targetPos) return;
+  const bearing = computeBearing(currentPos.latitude, currentPos.longitude, targetPos.lat, targetPos.lon);
+  const dist = haversineDistance(currentPos.latitude, currentPos.longitude, targetPos.lat, targetPos.lon);
+  bearingEl.textContent = bearing.toFixed(1) + '°';
+  distanceEl.textContent = dist >= 1000 ? (dist/1000).toFixed(2) + ' km' : Math.round(dist) + ' m';
+
+  if(haveHeading && latestHeading != null){
+    // rotate so that the needle (which points to north at 0 rotation) points toward (bearing - heading)
+    const rotateDeg = (bearing - latestHeading + 360) % 360;
+    rotateNeedleTo(rotateDeg);
+    headingEl.textContent = latestHeading.toFixed(1) + '°';
+  } else {
+    // no device heading: rotate needle to absolute bearing (north-up on screen)
+    rotateNeedleTo(bearing);
+    headingEl.textContent = 'N/A';
+  }
+}
+
+// set target and refresh
+setTargetBtn.addEventListener('click', ()=>{
+  const lat = parseFloat(targetLatInput.value);
+  const lon = parseFloat(targetLonInput.value);
+  if(!isFinite(lat) || !isFinite(lon)){
+    alert('Please enter valid numeric coordinates');
+    return;
+  }
+  targetPos = {lat, lon};
+  if(!currentPos){
+    // try get current position once
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(p=>{ currentPos = p.coords; updateUI(); }, e=>{ console.warn('geoloc err', e); }, {enableHighAccuracy:true, maximumAge:30000, timeout:10000});
+    }
+  } else updateUI();
+});
+
+// tracking
+startTrackBtn.addEventListener('click', ()=>{
+  if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId=null; startTrackBtn.textContent='Start tracking'; return; }
+  if(!navigator.geolocation){ alert('Geolocation unavailable'); return; }
+  watchId = navigator.geolocation.watchPosition(pos=>{
+    currentPos = pos.coords;
+    if(followCheckbox.checked && targetPos) updateUI();
+  }, err=>{ console.warn('watch err',err); alert('Error obtaining position: '+err.message); }, {enableHighAccuracy:true, maximumAge:2000, timeout:10000});
+  startTrackBtn.textContent='Stop tracking';
+});
+
+// enable device heading (for iOS requiring permission)
+enableHeadingBtn.addEventListener('click', async ()=>{
+  // iOS 13+ requires DeviceOrientationEvent.requestPermission
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    try{
+      const perm = await DeviceOrientationEvent.requestPermission();
+      if(perm === 'granted'){
+        window.addEventListener('deviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation', onDeviceOrientation);
+        enableHeadingBtn.textContent = 'Heading enabled';
+        haveHeading = true;
+      } else {
+        alert('Permission denied for motion/orientation');
+      }
+    }catch(err){ console.warn(err); alert('Error requesting permission: '+err); }
+  } else {
+    // other browsers usually allow without prompt
+    window.addEventListener('deviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation', onDeviceOrientation);
+    haveHeading = true; enableHeadingBtn.textContent='Heading enabled';
+  }
+});
+
+function onDeviceOrientation(e){
+  // prefer absolute heading if available
+  let heading = null;
+  if(e.absolute && typeof e.alpha === 'number'){
+    // alpha is rotation around z axis in degrees relative to device's reference frame.
+    // different browsers use different references — many provide 'webkitCompassHeading' which is already in degrees from north
+  }
+  // Some browsers (iOS Safari) provide webkitCompassHeading
+  if(typeof e.webkitCompassHeading === 'number'){
+    heading = e.webkitCompassHeading; // 0 = north
+  } else if(typeof e.alpha === 'number'){
+    // alpha gives rotation around z; depending on 'absolute' and device orientation this may or may not be relative to north.
+    // A common approach is to use alpha when absolute==true; fall back to alpha anyway (user can test accuracy).
+    // Convert alpha to compass heading: heading = (360 - alpha) % 360 for many devices.
+    heading = (360 - e.alpha) % 360;
+  }
+  if(heading != null){ latestHeading = heading; haveHeading = true; if(targetPos && currentPos) updateUI(); }
+}
+
+// also listen to older "compassneedscalibration" events? skip for brevity
+
+// If the user has already granted motion permission automatically, some browsers will send events immediately
+window.addEventListener('deviceorientation', onDeviceOrientation);
+
+// Basic UX: if user enters target and we have location, update immediately
+[targetLatInput, targetLonInput].forEach(inp => inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter') setTargetBtn.click(); }));
+
+// make the compass animate to 0 at start
+rotateNeedleTo(0);
+
+</script>
+</body>
+</html>
