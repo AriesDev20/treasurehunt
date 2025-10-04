@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Copy My Location — GitHub Pages</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #0b1220;
+      --accent: #7dd3fc;
+      --muted: #94a3b8;
+      --success: #10b981;
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#071028 0%, #071827 100%);
+      color:#e6eef8;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      box-sizing:border-box;
+    }
+    .card{
+      width:100%;
+      max-width:520px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+      padding:24px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    h1{margin:0 0 8px 0;font-size:20px}
+    p.lead{margin:0 0 18px 0;color:var(--muted)}
+    .controls{display:flex;gap:12px;flex-wrap:wrap}
+    button{
+      background:linear-gradient(90deg,var(--accent), #4cc9f0);
+      border:none;
+      padding:10px 14px;
+      border-radius:8px;
+      color:#04202a;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(8,38,54,0.35);
+    }
+    button.secondary{
+      background:transparent;
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,0.04);
+      box-shadow:none;
+    }
+    button:disabled{opacity:0.5; cursor:not-allowed}
+    .output{
+      margin-top:16px;
+      padding:14px;
+      border-radius:8px;
+      background: rgba(255,255,255,0.02);
+      font-family: monospace;
+      color:#dff3fb;
+      word-break:break-all;
+    }
+    .small{font-size:13px;color:var(--muted)}
+    .success{color:var(--success); font-weight:600}
+    .error{color:#fb7185; font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="card" role="main">
+    <h1>Copy my location (lat, lon)</h1>
+    <p class="lead">Click the button to let the browser get your current latitude and longitude and copy it to the clipboard. Works only over HTTPS (GitHub Pages is fine).</p>
+
+    <div class="controls">
+      <button id="copyBtn">Get & copy my coordinates</button>
+      <button id="showBtn" class="secondary">Show coordinates only</button>
+      <button id="clearBtn" class="secondary">Clear</button>
+    </div>
+
+    <div id="status" class="small" style="margin-top:12px">Status: <span id="statusText">idle</span></div>
+
+    <div id="output" class="output" aria-live="polite" style="display:none"></div>
+  </div>
+
+  <script>
+    const copyBtn = document.getElementById('copyBtn');
+    const showBtn = document.getElementById('showBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusText = document.getElementById('statusText');
+    const output = document.getElementById('output');
+
+    function setStatus(text, type){
+      statusText.textContent = text;
+      statusText.className = type ? type : '';
+    }
+
+    function showOutput(text){
+      output.style.display = 'block';
+      output.textContent = text;
+    }
+
+    function hideOutput(){
+      output.style.display = 'none';
+      output.textContent = '';
+    }
+
+    async function copyToClipboard(text){
+      // Use modern API when available
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+        } finally {
+          document.body.removeChild(ta);
+        }
+      }
+    }
+
+    function formatCoords(coords){
+      // Return nice human readable and machine friendly form
+      // Also include altitude if available
+      const lat = coords.latitude.toFixed(7);
+      const lon = coords.longitude.toFixed(7);
+      const alt = (coords.altitude === null || coords.altitude === undefined) ? 'n/a' : coords.altitude;
+      const iso = `geo:${lat},${lon}`;
+      return `Latitude: ${lat}\nLongitude: ${lon}\nAltitude: ${alt}\n\nCopy formats:\n- Plain: ${lat}, ${lon}\n- geo: ${iso}`;
+    }
+
+    function getPosition(options = {enableHighAccuracy: false, timeout: 15000, maximumAge: 0}) {
+      return new Promise((resolve, reject) => {
+        if (!('geolocation' in navigator)) {
+          reject(new Error('Geolocation not supported by this browser.'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, err => {
+          // Provide friendlier messages
+          switch(err.code){
+            case err.PERMISSION_DENIED:
+              reject(new Error('Permission denied. Please allow location access.'));
+              break;
+            case err.POSITION_UNAVAILABLE:
+              reject(new Error('Position unavailable.'));
+              break;
+            case err.TIMEOUT:
+              reject(new Error('Position request timed out.'));
+              break;
+            default:
+              reject(new Error('Unable to retrieve location.'));
+          }
+        }, options);
+      });
+    }
+
+    async function handleGetAndCopy(copy=true){
+      setStatus('Requesting location…');
+      hideOutput();
+      try {
+        const pos = await getPosition({enableHighAccuracy:false, timeout:20000});
+        const coords = pos.coords;
+        const plain = `${coords.latitude.toFixed(7)}, ${coords.longitude.toFixed(7)}`;
+        const formatted = formatCoords(coords);
+
+        showOutput(formatted);
+        setStatus('Location found.', 'success');
+
+        if (copy) {
+          try {
+            await copyToClipboard(plain);
+            setStatus('Coordinates copied to clipboard!', 'success');
+          } catch (e) {
+            setStatus('Failed to copy to clipboard.', 'error');
+          }
+        }
+      } catch (err) {
+        showOutput('Error: ' + err.message);
+        setStatus('Error', 'error');
+      }
+    }
+
+    copyBtn.addEventListener('click', () => handleGetAndCopy(true));
+    showBtn.addEventListener('click', () => handleGetAndCopy(false));
+    clearBtn.addEventListener('click', () => {
+      hideOutput();
+      setStatus('idle');
+    });
+
+    // Accessibility & feature detection
+    if (!('geolocation' in navigator)) {
+      copyBtn.disabled = true;
+      showBtn.disabled = true;
+      setStatus('Geolocation not supported.', 'error');
+      showOutput('Your browser does not support the Geolocation API.');
+    } else if (!('clipboard' in navigator)) {
+      // Clipboard may still work via fallback, but warn user
+      setStatus('Clipboard API not fully available; fallback will be used.', 'small');
+    }
+
+    // Hint: GitHub Pages serves over HTTPS by default — Geolocation requires HTTPS.
+  </script>
+</body>
+</html>
